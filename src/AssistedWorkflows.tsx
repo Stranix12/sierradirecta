@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {Sparkles,Mic,Square,ArrowRight,CheckCircle2} from 'lucide-react';
 import {api} from './api';
+import {createDictation} from './dictation';
 type Row=Record<string,any>;
 const usd=(s:any)=>Number(s).toLocaleString('es-EC',{style:'currency',currency:'USD'});
 export function AssistedWorkflows({role,online,onManual,onDone}:{role:string,online:boolean,onManual:()=>void,onDone:()=>void}){
@@ -11,7 +12,7 @@ export function AssistedWorkflows({role,online,onManual,onDone}:{role:string,onl
  useEffect(()=>{let active=true;api('/assistance/status').then(r=>{if(active)setReady(r.ready);}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;recognition.current?.abort();};},[]);
  const focus=()=>requestAnimationFrame(()=>region.current?.focus({preventScroll:true}));
  async function run(fn:()=>Promise<void>){setBusy(true);setError('');try{await fn();focus();}catch(e:any){setError(e.message);}finally{setBusy(false);}}
- function dictate(){if(listening){recognition.current?.stop();return;}if(!Speech)return;const r=new Speech();recognition.current=r;r.lang='es-EC';r.interimResults=false;r.continuous=false;r.onstart=()=>setListening(true);r.onend=()=>setListening(false);r.onerror=(e:any)=>{setListening(false);setError(e.error==='not-allowed'?'No se autorizó el micrófono. Puedes escribir la solicitud.':'No se pudo reconocer la voz. Puedes escribir o volver a intentarlo.');};r.onresult=(e:any)=>{setText(old=>(old+' '+e.results[0][0].transcript).trim().slice(0,1500));};try{r.start();}catch{setError('El dictado no está disponible. Puedes escribir.');}}
+ function dictate(){if(listening){recognition.current?.stop();return;}if(!Speech)return;recognition.current?.abort();setError('');const r=createDictation(Speech,{onListening:setListening,onError:setError,onText:phrase=>setText(old=>(old+' '+phrase).trim().slice(0,1500))});recognition.current=r;r.start();}
  const edit=(key:string,value:any)=>{setFields(old=>({...old,[key]:value}));setProposal(null);setConfirmed(false);};
  function itemEdit(index:number,key:string,value:any){edit('items',fields.items.map((r:Row,i:number)=>i===index?{...r,[key]:value}:r));}
  async function extract(){recognition.current?.stop();setDraft(null);setProposal(null);setResult(null);setConfirmed(false);const d=await api('/assistance/'+kind+'/interpret','POST',{text});setDraft(d);setFields(d.fields||{});}
