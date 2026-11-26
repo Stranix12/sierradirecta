@@ -1,0 +1,223 @@
+generator client {
+ provider = "prisma-client-js"
+}
+datasource db {
+ provider = "postgresql"
+}
+model Association {
+ id String @id @default(uuid())
+ name String
+ locality String
+ representative String
+ users User[]
+ producers Producer[]
+ lots Lot[]
+ orders Order[]
+}
+model User {
+ id String @id @default(uuid())
+ name String
+ email String @unique
+ password String
+ role String @default("comprador")
+ organization String @default("")
+ contact String @default("")
+ active Boolean @default(true)
+ associationId String?
+ association Association? @relation(fields:[associationId],references:[id])
+ sessions Session[]
+ orders Order[]
+ notifications Notification[]
+ aiDrafts AiDraft[]
+}
+model Session {
+ id String @id
+ userId String
+ user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+ csrf String
+ expires DateTime
+}
+model Category {
+ id String @id @default(uuid())
+ name String @unique
+ products Product[]
+}
+model Product {
+ id String @id @default(uuid())
+ name String
+ categoryId String
+ category Category @relation(fields:[categoryId],references:[id])
+ active Boolean @default(true)
+ lots Lot[]
+ references Reference[]
+}
+model Producer {
+ id String @id @default(uuid())
+ name String
+ community String
+ active Boolean @default(true)
+ associationId String
+ association Association @relation(fields:[associationId],references:[id])
+ lots Lot[]
+}
+model Lot {
+ id String @id @default(uuid())
+ associationId String
+ association Association @relation(fields:[associationId],references:[id])
+ producerId String
+ producer Producer @relation(fields:[producerId],references:[id])
+ productId String
+ product Product @relation(fields:[productId],references:[id])
+ variety String
+ description String
+ stock Decimal @db.Decimal(12,2)
+ reserved Decimal @default(0) @db.Decimal(12,2)
+ price Decimal @db.Decimal(12,2)
+ harvest DateTime
+ available DateTime
+ active Boolean @default(true)
+ created DateTime @default(now())
+ items OrderItem[]
+ movements Movement[]
+ @@index([associationId,active,available])
+ @@index([productId])
+}
+model Market {
+ id String @id @default(uuid())
+ name String @unique
+ references Reference[]
+}
+model Reference {
+ id String @id @default(uuid())
+ productId String
+ product Product @relation(fields:[productId],references:[id])
+ marketId String
+ market Market @relation(fields:[marketId],references:[id])
+ source String
+ date DateTime
+ unit String
+ kgPerUnit Decimal @db.Decimal(12,4)
+ originalMin Decimal @db.Decimal(12,2)
+ originalMax Decimal @db.Decimal(12,2)
+ min Decimal @db.Decimal(12,4)
+ max Decimal @db.Decimal(12,4)
+ @@index([productId,date])
+ @@unique([productId,marketId,date,source])
+}
+model Order {
+ id String @id @default(uuid())
+ buyerId String
+ buyer User @relation(fields:[buyerId],references:[id])
+ associationId String
+ association Association @relation(fields:[associationId],references:[id])
+ status String @default("pendiente")
+ key String
+ payloadHash String
+ address String
+ deliveryDate DateTime
+ institution String @default("")
+ responsible String @default("")
+ pae Boolean @default(false)
+ created DateTime @default(now())
+ items OrderItem[]
+ events OrderEvent[]
+ attachments Attachment[]
+ incidents Incident[]
+ movements Movement[]
+ @@unique([buyerId,key])
+ @@index([associationId,status,created])
+}
+model OrderItem {
+ id String @id @default(uuid())
+ orderId String
+ order Order @relation(fields:[orderId],references:[id])
+ lotId String
+ lot Lot @relation(fields:[lotId],references:[id])
+ quantity Decimal @db.Decimal(12,2)
+ price Decimal @db.Decimal(12,2)
+ origin Json
+ @@unique([orderId,lotId])
+}
+model OrderEvent {
+ id String @id @default(uuid())
+ orderId String
+ order Order @relation(fields:[orderId],references:[id])
+ status String
+ actorId String
+ reason String @default("")
+ created DateTime @default(now())
+}
+model Movement {
+ id String @id @default(uuid())
+ lotId String
+ lot Lot @relation(fields:[lotId],references:[id])
+ orderId String
+ order Order @relation(fields:[orderId],references:[id])
+ kind String
+ quantity Decimal @db.Decimal(12,2)
+ created DateTime @default(now())
+ @@unique([orderId,lotId,kind])
+}
+model Notification {
+ id String @id @default(uuid())
+ userId String
+ user User @relation(fields:[userId],references:[id])
+ orderId String?
+ lotId String?
+ category String @default("pedidos")
+ priority String @default("media")
+ resolved Boolean @default(false)
+ message String
+ read Boolean @default(false)
+ created DateTime @default(now())
+ key String @unique
+ @@index([userId,created])
+}
+model Attachment {
+ content AttachmentContent?
+ id String @id @default(uuid())
+ orderId String
+ order Order @relation(fields:[orderId],references:[id])
+ name String
+ mime String
+ path String
+ kind String
+ size Int
+ actorId String
+ created DateTime @default(now())
+}
+model AttachmentContent {
+ attachmentId String @id
+ attachment Attachment @relation(fields:[attachmentId],references:[id],onDelete:Cascade)
+ bytes Bytes
+}
+model Incident {
+ id String @id @default(uuid())
+ orderId String
+ order Order @relation(fields:[orderId],references:[id])
+ actorId String
+ reason String
+ created DateTime @default(now())
+}
+model Audit {
+ id String @id @default(uuid())
+ actorId String
+ entity String
+ entityId String
+ action String
+ reason String
+ data Json
+ created DateTime @default(now())
+}
+model AiDraft {
+ id String @id @default(uuid())
+ userId String
+ user User @relation(fields:[userId],references:[id])
+ kind String
+ data Json
+ expires DateTime
+ created DateTime @default(now())
+ result Json?
+ confirmHash String?
+ @@index([userId,created])
+}

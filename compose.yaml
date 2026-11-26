@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: sierradirecta
+      POSTGRES_USER: sierra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:55439:5432"
+    volumes:
+      - sierra_db:/var/lib/postgresql/data
+volumes:
+  sierra_db:

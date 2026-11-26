@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.local/
+test-results/
+playwright-report/
+*.log
+.env.*
+!.env.example
+docs/evidencias/
+HOSTING-ONLY.txt
